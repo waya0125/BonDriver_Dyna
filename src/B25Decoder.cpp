@@ -233,9 +233,11 @@ void B25Decoder::HandleECM(uint16_t ecm_pid, const std::vector<uint8_t>& sec) {
     auto it = ecm_states_.find(ecm_pid);
     if (it == ecm_states_.end()) return;
 
-    // ECM payload is sec[3 .. sec.size()-4) (without 3B header and 4B CRC)
-    const uint8_t* payload = sec.data() + 3;
-    const size_t plen = sec.size() - 7;
+    // section_syntax_indicator == 1 の場合は 8 バイトヘッダ、0 の場合は 3 バイトヘッダ（末尾 4B は CRC）
+    const size_t hdr_len = (sec[1] & 0x80) ? 8 : 3;
+    if (sec.size() <= hdr_len + 4) return;
+    const uint8_t* payload = sec.data() + hdr_len;
+    const size_t plen = sec.size() - hdr_len - 4;
     if (it->second.last_ecm.size() == plen &&
         std::memcmp(it->second.last_ecm.data(), payload, plen) == 0) {
         return;
