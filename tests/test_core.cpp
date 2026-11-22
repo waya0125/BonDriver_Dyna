@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 waya0125
 #include "Crypto.hpp"
+#include "Multi2.hpp"
 #include "Settler.hpp"
 #include "StreamAligner.hpp"
 
@@ -109,6 +110,27 @@ void TestFrequency() {
     assert(!dyna::ChannelToFrequencyKHz(99, false, f));
 }
 
+void TestMulti2RoundTrip() {
+    uint8_t sys_key[32];
+    uint8_t cbc[8];
+    uint8_t ks[16];
+    for (int i = 0; i < 32; ++i) sys_key[i] = uint8_t(0x10 + i);
+    for (int i = 0; i < 8; ++i) cbc[i] = uint8_t(0x80 + i);
+    for (int i = 0; i < 16; ++i) ks[i] = uint8_t(0xa0 + i);
+
+    dyna::Multi2Cipher m(sys_key, cbc, 4);
+    m.SetScrambleKey(ks);
+    assert(m.Keyed());
+
+    std::vector<uint8_t> orig(184);
+    for (size_t i = 0; i < orig.size(); ++i) orig[i] = uint8_t(i * 13 + 5);
+    auto buf = orig;
+    m.Encrypt(2, buf.data(), buf.size());
+    assert(std::memcmp(buf.data(), orig.data(), orig.size()) != 0);
+    m.Decrypt(2, buf.data(), buf.size());
+    assert(std::memcmp(buf.data(), orig.data(), orig.size()) == 0);
+}
+
 } // namespace
 
 int main() {
@@ -117,6 +139,7 @@ int main() {
     TestXORCipherRoundTrip();
     TestSettler();
     TestFrequency();
+    TestMulti2RoundTrip();
     std::cout << "ALL CORE TESTS PASSED\n";
     return 0;
 }

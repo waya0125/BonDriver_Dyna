@@ -5,6 +5,7 @@
 #ifdef _WIN32
 
 #include "IBonDriver2.h"
+#include "B25Decoder.hpp"
 #include "DyudDevice.hpp"
 #include "Settler.hpp"
 #include "StreamAligner.hpp"
@@ -20,6 +21,7 @@ namespace dyna {
 
 struct Config {
     int device_index = 0;
+    bool enable_b25 = true;
     bool no_xor = false;
     bool no_settle = false;
     bool one_seg = false;
@@ -78,6 +80,8 @@ private:
     bool active_xor_enabled_ = false;
     Aligner aligner_;
     Settler settler_;
+    B25Decoder b25_;
+    bool b25_active_ = false;
     int last_resyncs_ = 0;
 
     // 出力キュー

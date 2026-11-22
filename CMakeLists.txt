@@ -12,6 +12,8 @@ add_library(dyna_core STATIC
     src/Crypto.cpp
     src/StreamAligner.cpp
     src/Settler.cpp
+    src/Multi2.cpp
+    src/B25Decoder.cpp
 )
 target_include_directories(dyna_core PUBLIC src include)
 

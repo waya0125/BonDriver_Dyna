@@ -53,6 +53,10 @@ public:
     bool StartStream(WinUsbDevice::ChunkCallback cb);
     void StopStream();
 
+    // 内蔵 B-CAS スロット制御（0xf0 APDU 中継）
+    bool ResetBcas();
+    bool TransmitBcas(const uint8_t* apdu, size_t len, std::vector<uint8_t>& resp_out);
+
     bool GetXorCipherCopy(XORCipher& out) const;
     const FirmwareVersion& Firmware() const { return fw_; }
     const std::string& Serial() const { return serial_; }
@@ -72,6 +76,9 @@ private:
     mutable std::mutex xor_mu_;
     bool xor_enabled_ = false;
     XORCipher xor_cipher_;
+
+    std::mutex bcas_mu_;
+    uint8_t bcas_cycle_ = 0;
 
     FirmwareVersion fw_;
     std::string serial_;

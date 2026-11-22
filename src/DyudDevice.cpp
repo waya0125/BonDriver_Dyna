@@ -251,6 +251,54 @@ void DyudDevice::StopStream() {
     usb_.StopAsyncStream();
 }
 
+bool DyudDevice::ResetBcas() {
+    std::lock_guard<std::mutex> lk(bcas_mu_);
+    bcas_cycle_ = 0;
+    constexpr uint8_t cmdA[] = {0x1f, 0xf0, 0xf0, 0x05, 0x02, 0x00, 0x42, 0x00, 0x00};
+    constexpr uint8_t cmdB[] = {0x1f, 0xf0, 0xf0, 0x05, 0x02, 0x00, 0x41, 0x00, 0x00};
+    std::vector<uint8_t> res;
+    if (!SendCommand(cmdA, sizeof(cmdA), res, 128)) return false;
+    if (!SendCommand(cmdB, sizeof(cmdB), res, 128)) return false;
+    return true;
+}
+
+bool DyudDevice::TransmitBcas(const uint8_t* apdu, size_t len, std::vector<uint8_t>& resp_out) {
+    std::lock_guard<std::mutex> lk(bcas_mu_);
+    if (len == 0 || len > 115) return false;
+
+    uint8_t cmd[128]{};
+    cmd[0] = 0x1f;
+    cmd[1] = 0xf0;
+    cmd[2] = 0xf0;
+    cmd[3] = static_cast<uint8_t>(len + 9);
+    cmd[4] = 0x02;
+    cmd[5] = 0x00;
+    cmd[6] = 0x31;
+    cmd[7] = 0x00;
+    cmd[8] = static_cast<uint8_t>(len + 4);
+    cmd[9] = 0x00;
+    cmd[11] = static_cast<uint8_t>(len);
+    std::memcpy(cmd + 12, apdu, len);
+
+    for (int attempt = 0; attempt <= 3; ++attempt) {
+        cmd[10] = bcas_cycle_;
+        bcas_cycle_ ^= 0x40;
+
+        uint8_t parity = 0;
+        for (size_t i = 10; i < 12 + len; ++i) parity ^= cmd[i];
+        cmd[12 + len] = parity;
+
+        std::vector<uint8_t> res;
+        if (!SendCommand(cmd, 13 + len, res, 128)) continue;
+        if (res.size() < 7 || res[0] != 0 || res[1] < 6) continue;
+        const size_t resp_len = res[6];
+        if (7 + resp_len > res.size()) continue;
+        resp_out.assign(res.begin() + 7, res.begin() + 7 + static_cast<ptrdiff_t>(resp_len));
+        return true;
+    }
+    return false;
+}
+
 bool DyudDevice::GetXorCipherCopy(XORCipher& out) const {
     std::lock_guard<std::mutex> lk(xor_mu_);
     if (!xor_enabled_) return false;

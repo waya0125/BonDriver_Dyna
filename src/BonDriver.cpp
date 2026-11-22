@@ -58,6 +58,7 @@ void BonDriverDyna::LoadIni(HMODULE module) {
     }
 
     cfg_.device_index = GetPrivateProfileIntW(L"DYUD200", L"DeviceIndex", 0, ini_path.c_str());
+    cfg_.enable_b25 = GetPrivateProfileIntW(L"DYUD200", L"EnableB25", 1, ini_path.c_str()) != 0;
     cfg_.no_xor = GetPrivateProfileIntW(L"DYUD200", L"NoXor", 0, ini_path.c_str()) != 0;
     cfg_.no_settle = GetPrivateProfileIntW(L"DYUD200", L"NoSettle", 0, ini_path.c_str()) != 0;
     cfg_.one_seg = GetPrivateProfileIntW(L"DYUD200", L"OneSeg", 0, ini_path.c_str()) != 0;
@@ -70,6 +71,15 @@ const BOOL BonDriverDyna::OpenTuner(void) {
     if (!dev_.Init()) {
         dev_.Close();
         return FALSE;
+    }
+    b25_active_ = false;
+    if (cfg_.enable_b25) {
+        BcasTransport tr;
+        tr.reset = [this]() { return dev_.ResetBcas(); };
+        tr.transmit = [this](const uint8_t* apdu, size_t len, std::vector<uint8_t>& resp) {
+            return dev_.TransmitBcas(apdu, len, resp);
+        };
+        b25_active_ = b25_.Init(std::move(tr), 4);
     }
     is_open_ = true;
     return TRUE;
@@ -110,6 +120,9 @@ const BOOL BonDriverDyna::SetChannel(const DWORD dwSpace, const DWORD dwChannel)
     active_xor_enabled_ = dev_.GetXorCipherCopy(active_xor_);
     aligner_.Reset(active_xor_enabled_ ? &active_xor_ : nullptr);
     settler_.Reset();
+    if (b25_active_) {
+        b25_.ResetStream();
+    }
     last_resyncs_ = 0;
 
     if (!dev_.StartStream([this](const uint8_t* data, size_t len) { OnRawChunk(data, len); })) {
@@ -134,6 +147,9 @@ void BonDriverDyna::OnRawChunk(const uint8_t* data, size_t len) {
         }
     }
     if (packets.empty()) return;
+    if (b25_active_) {
+        b25_.DecodePackets(packets.data(), packets.size());
+    }
 
     std::lock_guard<std::mutex> lk(queue_mu_);
     while (queue_.size() >= kMaxQueueChunks) {
