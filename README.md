@@ -11,6 +11,16 @@ Linux 向け録画ツール `recdyna` の設計・検証結果をもとに、**W
 - **安定化受信**: `24064` バイト（`47×512 = 128×188`）× 16 本の非同期 `OVERLAPPED` I/O ＋ 選局直後の同期揃え（`Aligner`）・過渡期除去（`Settler`）
 - **Linux / Windows 両方でビルド可能**: Windows（MSVC）と Linux（`mingw-w64` クロスビルド）の両方に対応
 
+## 実機動作確認（2026-11-22 時点）
+
+検証環境: Windows 7 x64（VM）+ Zadig 2.7（`WinUSB v6.1.7600.16385`）+ DY-UD200（FW `1.0.5-2`）
+
+| 検証項目 | 結果 |
+|---|---|
+| コア単体テスト（AES テストベクタ・鍵切替・XOR・Settler・周波数変換） | 全項目 PASS（Linux `ctest` / GitHub Actions） |
+| `bon_test.exe`（UHF 21ch、5 秒受信） | `OpenTuner` / `SetChannel` OK、75,585 パケット、`sync_err=0` / `tei=0` / `cc_err=0` |
+| **TVTest 0.10.0（64bit）** + MSVC ビルド `BonDriver_Dyna.dll` | チャンネルスキャン・選局・EIT 番組情報取得 OK、`22.93 dB / 30.03 Mbps`、**`D 0 / E 0`**（ゼロドロップ） |
+
 ## 使い方（Windows）
 
 1. [Zadig](https://zadig.akeo.ie/) などで DY-UD200（`1c11:1004`）に **WinUSB** ドライバをインストールします。
