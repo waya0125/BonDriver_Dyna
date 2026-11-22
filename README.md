@@ -8,18 +8,19 @@ Linux 向け録画ツール `recdyna` の設計・検証結果をもとに、**W
 - **x64 / x86 両対応**: 現代の TVTest・EDCB（64bit / 32bit）でそのまま利用可能
 - **WinUSB 直接呼び出し**: 古い未署名カーネルドライバ不要。Zadig で WinUSB ドライバを当てるだけで Windows 10 / 11（HVCI 有効環境含む）で動作
 - **FW `1.0.5-2` 自動検出・再初期化**: 初期 FW・再販品 FW（`1.0.5-2`）の両方に対応
+- **内蔵 B-CAS スロットによる ARIB STD-B25 復号対応**: 本体スロットの B-CAS カードで自動復号（`EnableB25=1` 既定。カード未挿入時は生 TS 出力へ自動フォールバック）
 - **安定化受信**: `24064` バイト（`47×512 = 128×188`）× 16 本の非同期 `OVERLAPPED` I/O ＋ 選局直後の同期揃え（`Aligner`）・過渡期除去（`Settler`）
 - **Linux / Windows 両方でビルド可能**: Windows（MSVC）と Linux（`mingw-w64` クロスビルド）の両方に対応
 
 ## 実機動作確認（2026-11-22 時点）
 
-検証環境: Windows 7 x64（VM）+ Zadig 2.7（`WinUSB v6.1.7600.16385`）+ DY-UD200（FW `1.0.5-2`）
+検証環境: Windows 7 x64（VM）+ Zadig 2.7（`WinUSB v6.1.7600.16385`）+ DY-UD200（FW `1.0.5-2`, 内蔵 B-CAS スロット使用）
 
 | 検証項目 | 結果 |
 |---|---|
-| コア単体テスト（AES テストベクタ・鍵切替・XOR・Settler・周波数変換） | 全項目 PASS（Linux `ctest` / GitHub Actions） |
+| コア単体テスト（AES テストベクタ・鍵切替・XOR・MULTI2・Settler・周波数変換） | 全項目 PASS（Linux `ctest` / GitHub Actions） |
 | `bon_test.exe`（UHF 21ch、5 秒受信） | `OpenTuner` / `SetChannel` OK、75,585 パケット、`sync_err=0` / `tei=0` / `cc_err=0` |
-| **TVTest 0.10.0（64bit）** + MSVC ビルド `BonDriver_Dyna.dll` | チャンネルスキャン・選局・EIT 番組情報取得 OK、`22.93 dB / 30.03 Mbps`、**`D 0 / E 0`**（ゼロドロップ） |
+| **TVTest 0.10.0（64bit）** + MSVC ビルド `BonDriver_Dyna.dll` | チャンネルスキャン・選局・内蔵 B-CAS 復号・録画 TS 再生すべて OK、`22.95 dB / 30.42 Mbps`、**`D 0 / E 0 / S 0`**（ゼロドロップ） |
 
 ## 使い方（Windows）
 
