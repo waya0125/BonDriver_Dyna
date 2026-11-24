@@ -1,34 +1,70 @@
 # BonDriver_Dyna
 
-ダイナコネクティブ（Dynaconnective）製 USB 地上デジタルチューナー（**DY-UD200**, `1c11:1004`）向けのモダンな Windows 用 **BonDriver（`IBonDriver2`）** です。  
-Linux 向け録画ツール `recdyna` の設計・検証結果をもとに、**WinUSB 直接呼び出し・64bit / 32bit 両対応・外部ランタイム依存なし** で再実装しています。
+ダイナコネクティブ（Dynaconnective）の USB 地デジチューナー DY-UD200 を、Windows の TVTest・EDCB で使う BonDriver（`IBonDriver2`）です。  
+Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の調べと確かめた結果をもとに、WinUSB で機器を直接操作する形で書き直しました。  
+古い未署名のカーネルドライバーは不要で、HVCI が有効な Windows 10・11 でも動きます。
 
-## 主な特徴
+## 対応機種
 
-- **x64 / x86 両対応**: 現代の TVTest・EDCB（64bit / 32bit）でそのまま利用可能
-- **WinUSB 直接呼び出し**: 古い未署名カーネルドライバ不要。Zadig で WinUSB ドライバを当てるだけで Windows 10 / 11（HVCI 有効環境含む）で動作
-- **FW `1.0.5-2` 自動検出・再初期化**: 初期 FW・再販品 FW（`1.0.5-2`）の両方に対応
-- **内蔵 B-CAS スロットによる ARIB STD-B25 復号対応**: 本体スロットの B-CAS カードで自動復号（`EnableB25=1` 既定。カード未挿入時は生 TS 出力へ自動フォールバック）
-- **安定化受信**: `24064` バイト（`47×512 = 128×188`）× 16 本の非同期 `OVERLAPPED` I/O ＋ 選局直後の同期揃え（`Aligner`）・過渡期除去（`Settler`）
-- **Linux / Windows 両方でビルド可能**: Windows（MSVC）と Linux（`mingw-w64` クロスビルド）の両方に対応
+| 機種 | USB ID | 放送波 | B-CAS | 対応 Windows | 詳細・動作確認 |
+|---|---|---|---|---|---|
+| Dynaconnective DY-UD200 | `1c11:1004` | 地デジ・CATV（1 チューナー） | 本体のスロット | 7〜11（x64・x86） | [docs/DY-UD200.md](docs/DY-UD200.md) |
 
-## 実機動作確認（2026-11-22 時点）
+## 関連プロジェクト
 
-検証環境: Windows 7 x64（VM）+ Zadig 2.7（`WinUSB v6.1.7600.16385`）+ DY-UD200（FW `1.0.5-2`, 内蔵 B-CAS スロット使用）
+- Linux の録画コマンド: [recdyna](https://github.com/waya0125/recdyna)
+- 手元のチューナーの動作確認の一覧: [チューナー動作確認一覧](https://waya0125.github.io/tuners/)
 
-| 検証項目 | 結果 |
-|---|---|
-| コア単体テスト（AES テストベクタ・鍵切替・XOR・MULTI2・Settler・周波数変換） | 全項目 PASS（Linux `ctest` / GitHub Actions） |
-| `bon_test.exe`（UHF 21ch、5 秒受信） | `OpenTuner` / `SetChannel` OK、75,585 パケット、`sync_err=0` / `tei=0` / `cc_err=0` |
-| **TVTest 0.10.0（64bit）** + MSVC ビルド `BonDriver_Dyna.dll` | チャンネルスキャン・選局・内蔵 B-CAS 復号・録画 TS 再生すべて OK、`22.95 dB / 30.42 Mbps`、**`D 0 / E 0 / S 0`**（ゼロドロップ） |
+## 必要なもの
 
-## 使い方（Windows）
+- [Zadig](https://zadig.akeo.ie/)（WinUSB ドライバーの割り当てに使う）
+- B-CAS カード（本体のスロットに挿す）
+- ファームウェアやメーカーのドライバーは不要です。
 
-1. [Zadig](https://zadig.akeo.ie/) などで DY-UD200（`1c11:1004`）に **WinUSB** ドライバをインストールします。
-2. TVTest / EDCB のアーキテクチャに合わせて `BonDriver_Dyna.dll`（x64 または x86）を配置します。
-3. 必要に応じて `BonDriver_Dyna.ini.sample` を `BonDriver_Dyna.ini` にリネームして設定を変更します。
+メーカーは 2010 年 10 月に自己破産を申請し、公式のサイトはなくなっています。  
+機器の情報は、有志の BonDriver_dyud の配布ページ（[Wayback Machine](http://web.archive.org/web/20130527152129/http://dyud200.zxq.net/)）と、有志のまとめ Wiki「[USB地デジチューナ DY-UD200 まとめwiki](https://w.atwiki.jp/dy-ud200/)」にあります。
 
-## ビルド方法
+## 入手
+
+[Releases](https://github.com/waya0125/BonDriver_Dyna/releases) から、MSVC でビルドした x64 版と x86 版の DLL を入手できます。
+
+## 準備
+
+1. Zadig で DY-UD200（`1c11:1004`）に **WinUSB** ドライバーを割り当てます。
+2. TVTest・EDCB に合わせて、`BonDriver_Dyna.dll`（x64 か x86）を BonDriver のフォルダーに置きます。
+3. 設定を変える場合は、`BonDriver_Dyna.ini.sample` を `BonDriver_Dyna.ini` に名前を変えて、DLL と同じフォルダーに置きます。
+
+## 使い方
+
+- チャンネル空間は `UHF`（13〜62ch）・`CATV`（C13〜C63ch）・`VHF`（1〜12ch）の 3 つです。  
+  TVTest でチャンネルスキャンをしてから使ってください。
+- 本体のスロットのカードで復号するので、TVTest・EDCB 側の B-CAS カードリーダーの設定は「なし」にします。
+
+### 設定（`BonDriver_Dyna.ini`）
+
+```ini
+[DYUD200]
+; 使用する DY-UD200 のインデックス（0 始まり。複数台接続時に指定）
+DeviceIndex=0
+
+; 本体内蔵 B-CAS スロットで ARIB STD-B25 復号を行う（1=有効 / 0=無効、既定 1）
+; カード未挿入時は自動的に無効となり生 TS を出力します
+EnableB25=1
+
+; パッチ済みファームウェアで TS XOR 復号を無効化する場合は 1
+NoXor=0
+
+; 選局直後の安定化フィルター（Settler）を無効化する場合は 1
+NoSettle=0
+
+; ワンセグモードで受信する場合は 1
+OneSeg=0
+
+; 選局後のロック待機タイムアウト（ミリ秒）
+LockTimeoutMs=3000
+```
+
+## ビルド
 
 ### Linux 上での単体テスト（コアロジック）
 
@@ -63,6 +99,12 @@ cmake --build build-x86 --config Release
 
 `v*` タグを push すると、GitHub Actions（`windows-latest` + MSVC）が自動で x64 / x86 の DLL をビルドして Release に添付します。
 
+## 注意事項
+
+- 地デジ専用です。BS・CS は受けられません。
+- TVTest・EDCB では、MSVC でビルドした DLL を使ってください。  
+  MinGW でビルドした DLL は C++ の ABI が違うので、TVTest が落ちます。
+
 ## ライセンス
 
-MIT License（[recdyna](../recdyna) と同じプロトコル知見・テストベクタを使用）
+MIT License（[recdyna](https://github.com/waya0125/recdyna) と同じプロトコルの知見とテストベクタを使っています）
