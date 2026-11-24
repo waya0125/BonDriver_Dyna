@@ -1,14 +1,15 @@
 # BonDriver_Dyna
 
 ダイナコネクティブ（Dynaconnective）の USB 地デジチューナー DY-UD200 を、Windows の TVTest・EDCB で使う BonDriver（`IBonDriver2`）です。  
-Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の調べと確かめた結果をもとに、WinUSB で機器を直接操作する形で書き直しました。  
-古い未署名のカーネルドライバーは不要で、HVCI が有効な Windows 10・11 でも動きます。
+Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の調査と検証結果をもとに、WinUSB で機器を直接操作する形で書き直しました。  
+無改造ファームウェア（初期版・`1.0.5-2`）の TS XOR 復号と本体スロットの B-CAS 復号に既定で対応しています。  
+古い未署名のカーネルドライバーは不要で、WinUSB ベースのため HVCI が有効な Windows 10・11 でも動作する設計です（実機確認済みは Windows 7 x64）。
 
 ## 対応機種
 
 | 機種 | USB ID | 放送波 | B-CAS | 対応 Windows | 詳細・動作確認 |
 |---|---|---|---|---|---|
-| Dynaconnective DY-UD200 | `1c11:1004` | 地デジ・CATV（1 チューナー） | 本体のスロット | 7〜11（x64・x86） | [docs/DY-UD200.md](docs/DY-UD200.md) |
+| Dynaconnective DY-UD200 | `1c11:1004` | 地デジ・CATV（1 チューナー） | 本体のスロット | 7（x64、VM で実機確認済み）。10・11 は未確認（WinUSB のため動く想定）。x86 はビルドのみ | [docs/DY-UD200.md](docs/DY-UD200.md) |
 
 ## 関連プロジェクト
 

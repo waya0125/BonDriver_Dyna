@@ -9,7 +9,7 @@
 | チューナー数 | 1 |
 | B-CAS | 本体のスロット（カードが無いときは、スクランブルのかかった TS をそのまま出す） |
 | ファームウェア | 本体に入っている。初期の版と再販品の `1.0.5-2` の両方に対応 |
-| 対応 Windows | 7〜11（x64・x86） |
+| 対応 Windows | 7（x64、VM で実機確認済み）。10・11 は未確認（WinUSB のため動く想定）。x86 はビルドのみ |
 | Windows | [BonDriver_Dyna](../README.md) |
 | Linux | [recdyna](https://github.com/waya0125/recdyna) |
 | 公式ページ | なし（メーカーは 2010 年 10 月に自己破産を申請） |
@@ -50,5 +50,10 @@ bon_test.exe BonDriver_Dyna.dll 0 8 5
 
 ## 6. 技術メモ
 
-機器の中身（USB の命令、初期化の手順、本体の B-CAS スロットの操作）と、Linux での動作確認の記録は、recdyna の [docs/DY-UD200.md](https://github.com/waya0125/recdyna/blob/main/docs/DY-UD200.md) にまとめています。  
-BonDriver_Dyna は、24064 バイト（`47×512 = 128×188`）× 16 本の非同期の `OVERLAPPED` I/O で受け、選局直後の同期合わせ（`Aligner`）と乱れの除去（`Settler`）をしてから TS を渡します。
+機器の中身（USB の命令、制御コマンドの AES-256 / AES-128 ECB + CRC32、TS パケットの XOR 復号、初期化手順、本体の B-CAS スロット制御）と Linux での動作確認の記録は、recdyna の [docs/DY-UD200.md](https://github.com/waya0125/recdyna/blob/main/docs/DY-UD200.md) にまとめています。
+
+BonDriver_Dyna 側の実装構成は次のとおりです。
+
+- **USB 制御と暗号処理**: WinUSB のバルク転送（OUT `0x02`・IN `0x84`）で AES-ECB + CRC32 による制御コマンドを送受信します。既定（`NoXor=0`）では選局時にセッション XOR 鍵を設定し、無改造ファームウェアの TS パケットを LUT で XOR 復号します（パッチ済みファームウェア向けに `NoXor=1` で無効化可）。
+- **TS 受信と安定化**: IN `0x86` から 24,064 バイト（`47 × 512 = 128 × 188`）× 16 本の非同期 `OVERLAPPED` I/O で受信し、選局直後の同期合わせ（`Aligner`）と乱れの除去（`Settler`、`NoSettle=1` で無効化可）を行ってから渡します。
+- **内蔵 B-CAS 復号**: 既定（`EnableB25=1`）で本体スロットの B-CAS カードを使って ARIB STD-B25 のスクランブルを復号します。カード未挿入時は自動的に無効となり、生 TS をそのまま出力します。
