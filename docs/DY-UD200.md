@@ -50,10 +50,10 @@ bon_test.exe BonDriver_Dyna.dll 0 8 5
 
 ## 6. 技術メモ
 
-機器の中身（USB の命令、制御コマンドの AES-256 / AES-128 ECB + CRC32、TS パケットの XOR 復号、初期化手順、本体の B-CAS スロット制御）と Linux での動作確認の記録は、recdyna の [docs/DY-UD200.md](https://github.com/waya0125/recdyna/blob/main/docs/DY-UD200.md) にまとめています。
+機器の中身（USB の命令・制御コマンドの AES-256 / AES-128 ECB + CRC32・TS パケットの XOR 復号・初期化手順・本体の B-CAS スロット制御）と Linux での動作確認の記録は、recdyna の [docs/DY-UD200.md](https://github.com/waya0125/recdyna/blob/main/docs/DY-UD200.md) にまとめています。
 
 BonDriver_Dyna 側の実装構成は次のとおりです。
 
-- **USB 制御と暗号処理**: WinUSB のバルク転送（OUT `0x02`・IN `0x84`）で AES-ECB + CRC32 による制御コマンドを送受信します。既定（`NoXor=0`）では選局時にセッション XOR 鍵を設定し、無改造ファームウェアの TS パケットを LUT で XOR 復号します（パッチ済みファームウェア向けに `NoXor=1` で無効化可）。
+- **USB 制御と暗号処理**: WinUSB のバルク転送（OUT `0x02`・IN `0x84`）で AES-ECB と CRC32 を適用した制御コマンドを送受信します。既定（`NoXor=0`）では選局時にセッション XOR 鍵を設定し、無改造ファームウェアの TS パケットを LUT で XOR 復号します（パッチ済みファームウェア向けに `NoXor=1` で無効化できます）。
 - **TS 受信と安定化**: IN `0x86` から 24,064 バイト（`47 × 512 = 128 × 188`）× 16 本の非同期 `OVERLAPPED` I/O で受信し、選局直後の同期合わせ（`Aligner`）と乱れの除去（`Settler`、`NoSettle=1` で無効化可）を行ってから渡します。
 - **内蔵 B-CAS 復号**: 既定（`EnableB25=1`）で本体スロットの B-CAS カードを使って ARIB STD-B25 のスクランブルを復号します。カード未挿入時は自動的に無効となり、生 TS をそのまま出力します。
