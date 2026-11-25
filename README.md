@@ -21,7 +21,7 @@ Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の�
 
 - [Zadig](https://zadig.akeo.ie/)（WinUSB ドライバーの割り当てに使う）
 - B-CAS カード（本体のスロットに挿す）
-- ファームウェアやメーカーのドライバーは不要です。
+- メーカーのドライバーは不要です（ファームウェアは本体内蔵のため純正のままでも動作しますが、ドロップ対策としてカスタムファームウェア `1.0.5-3` の導入を強く推奨します。手順は [dynafw](https://github.com/waya0125/dynafw) を参照）。
 
 メーカーは 2010 年 10 月に自己破産を申請し、公式のサイトはなくなっています。  
 機器の情報は、有志の BonDriver_dyud の配布ページ（[Wayback Machine](http://web.archive.org/web/20130527152129/http://dyud200.zxq.net/)）と、有志のまとめ Wiki「[USB地デジチューナ DY-UD200 まとめwiki](https://w.atwiki.jp/dy-ud200/)」にあります。
