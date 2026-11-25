@@ -112,7 +112,8 @@ const BOOL BonDriverDyna::SetChannel(const DWORD dwSpace, const DWORD dwChannel)
     dev_.StopStream();
     PurgeTsStream();
 
-    if (!dev_.Tune(freq_khz, cfg_.one_seg, !cfg_.no_xor)) {
+    const bool enable_xor = !cfg_.no_xor && !dev_.Firmware().IsXorBypassed();
+    if (!dev_.Tune(freq_khz, cfg_.one_seg, enable_xor)) {
         return FALSE;
     }
     dev_.WaitLock(cfg_.lock_timeout_ms);

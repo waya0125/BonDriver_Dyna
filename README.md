@@ -14,6 +14,7 @@ Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の�
 ## 関連プロジェクト
 
 - Linux の録画コマンド: [recdyna](https://github.com/waya0125/recdyna)
+- ファームウェア管理ツール（抽出・パッチ・書き込み）: [dynafw](https://github.com/waya0125/dynafw)
 - 手元のチューナーの動作確認の一覧: [チューナー動作確認一覧](https://waya0125.github.io/tuners/)
 
 ## 必要なもの
@@ -105,6 +106,7 @@ cmake --build build-x86 --config Release
 - 地デジ専用です。BS・CS は受けられません。
 - TVTest・EDCB では、MSVC でビルドした DLL を使ってください。  
   MinGW でビルドした DLL は C++ の ABI が違うので、TVTest が落ちます。
+- 純正ファームウェア（`1.0.5-2` など）では、機器内部のデバッグ出力に起因する不定期な TS ドロップが発生します。Drop 低減パッチ済みカスタムファームウェア（`1.0.5-3`、入れ替えは [dynafw](https://github.com/waya0125/dynafw) を参照）の利用を強く推奨します。`1.0.5-3` を検出した場合は自動で XOR 復号を無効化します（`1.0.2-2改` などでは `NoXor=1` を設定してください）。
 
 ## ライセンス
 

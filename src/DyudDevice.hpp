@@ -2,15 +2,7 @@
 // Copyright (c) 2026 waya0125
 #pragma once
 
-#ifdef _WIN32
-
-#include "Crypto.hpp"
-#include "WinUsbDevice.hpp"
-
 #include <cstdint>
-#include <mutex>
-#include <string>
-#include <vector>
 
 namespace dyna {
 
@@ -23,7 +15,28 @@ struct FirmwareVersion {
     uint32_t Uint32() const {
         return (uint32_t(major) << 24) | (uint32_t(minor1) << 16) | (uint32_t(minor2) << 8) | uint32_t(minor3);
     }
+
+    bool NeedsNewInit() const {
+        return major == 1 && minor1 == 0 && minor2 == 5 && minor3 >= 2;
+    }
+
+    bool IsXorBypassed() const {
+        return Uint32() == 0x01000503u;
+    }
 };
+
+} // namespace dyna
+
+#ifdef _WIN32
+
+#include "Crypto.hpp"
+#include "WinUsbDevice.hpp"
+
+#include <mutex>
+#include <string>
+#include <vector>
+
+namespace dyna {
 
 class DyudDevice {
 public:

@@ -103,8 +103,8 @@ bool DyudDevice::Init(std::string* err) {
 
     if (!GetFirmwareVersion(fw_)) return false;
 
-    // FW 1.0.5-2 は新ファーム用の初期化列でやり直す
-    if (fw_.Uint32() == 0x01000502u) {
+    // FW 1.0.5-2 / 1.0.5-3 は新ファーム用の初期化列でやり直す
+    if (fw_.NeedsNewInit()) {
         if (!SendCommand(kCmdClose, sizeof(kCmdClose), res, 2, err)) return false;
         if (!SendCommand(kCmdInitNew, sizeof(kCmdInitNew), res, 128, err)) return false;
         if (!StopTS()) return false;

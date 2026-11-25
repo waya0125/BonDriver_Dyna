@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 waya0125
 #include "Crypto.hpp"
+#include "DyudDevice.hpp"
 #include "Multi2.hpp"
 #include "Settler.hpp"
 #include "StreamAligner.hpp"
@@ -131,6 +132,15 @@ void TestMulti2RoundTrip() {
     assert(std::memcmp(buf.data(), orig.data(), orig.size()) == 0);
 }
 
+void TestFirmwareVersion() {
+    dyna::FirmwareVersion fw1022{1, 0, 2, 2};
+    dyna::FirmwareVersion fw1052{1, 0, 5, 2};
+    dyna::FirmwareVersion fw1053{1, 0, 5, 3};
+    assert(!fw1022.NeedsNewInit() && !fw1022.IsXorBypassed());
+    assert(fw1052.NeedsNewInit() && !fw1052.IsXorBypassed());
+    assert(fw1053.NeedsNewInit() && fw1053.IsXorBypassed());
+}
+
 } // namespace
 
 int main() {
@@ -140,6 +150,7 @@ int main() {
     TestSettler();
     TestFrequency();
     TestMulti2RoundTrip();
+    TestFirmwareVersion();
     std::cout << "ALL CORE TESTS PASSED\n";
     return 0;
 }
