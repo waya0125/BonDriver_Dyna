@@ -5,7 +5,9 @@
 #include "DyudDevice.hpp"
 
 #include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <string>
 #include <thread>
 
 namespace dyna {
@@ -41,16 +43,67 @@ inline void PutBE32(uint8_t* p, uint32_t v) {
 } // namespace
 
 bool DyudDevice::Open(int device_index, std::string* err) {
+    link_ = LinkInfo{};
     auto paths = WinUsbDevice::Enumerate(kDyudVendorId, kDyudProductId);
     if (paths.empty()) {
         if (err) *err = "DY-UD200 not found";
         return false;
     }
-    if (device_index < 0 || static_cast<size_t>(device_index) >= paths.size()) {
-        if (err) *err = "device index out of range";
-        return false;
+
+    if (device_index >= 0) {
+        if (static_cast<size_t>(device_index) >= paths.size()) {
+            if (err) *err = "device index out of range";
+            return false;
+        }
+        if (!usb_.Open(paths[static_cast<size_t>(device_index)], err)) {
+            return false;
+        }
+        link_.opened_index = device_index;
+        QueryLinkInfo();
+        return true;
     }
-    return usb_.Open(paths[static_cast<size_t>(device_index)], err);
+
+    // 空きデバイス自動選択: WinUSB のデバイスは同時に 1 つのハンドルしか開けないため、
+    // 他のプロセス（または同じプロセスの別 BonDriver）が使用中のものは Open に失敗する。
+    std::string last_err;
+    for (size_t i = 0; i < paths.size(); ++i) {
+        std::string e;
+        if (usb_.Open(paths[i], &e)) {
+            link_.opened_index = static_cast<int>(i);
+            QueryLinkInfo();
+            return true;
+        }
+        last_err = e;
+    }
+    if (err) *err = "no free DY-UD200 (all " + std::to_string(paths.size()) + " in use): " + last_err;
+    return false;
+}
+
+void DyudDevice::QueryLinkInfo() {
+    link_.speed_ok = usb_.QueryDeviceSpeed(link_.speed);
+    link_.pipe_ok = usb_.QueryPipeInfo(kEpTsIn, link_.ts_pipe);
+    link_.stream_urb_size = kStreamUrbSize;
+    if (link_.pipe_ok) {
+        link_.stream_urb_size = ChooseStreamUrbSize(link_.ts_pipe.max_packet_size, kStreamUrbSize);
+    }
+
+    char buf[256];
+    std::snprintf(buf, sizeof(buf),
+        "[BonDriver_Dyna] device#%d speed=%s(%u) ep=0x%02x %s type=%d mps=%u interval=%u mbpi=%lu urb=%zu\n",
+        link_.opened_index,
+        !link_.speed_ok ? "unknown"
+            : link_.speed >= 3 ? "high"
+            : link_.speed == 2 ? "full"
+            : "low/full",
+        static_cast<unsigned>(link_.speed),
+        static_cast<unsigned>(kEpTsIn),
+        !link_.pipe_ok ? "pipe=unknown" : link_.ts_pipe.from_ex ? "pipe=QueryPipeEx" : "pipe=QueryPipe",
+        link_.ts_pipe.pipe_type,
+        static_cast<unsigned>(link_.ts_pipe.max_packet_size),
+        static_cast<unsigned>(link_.ts_pipe.interval),
+        static_cast<unsigned long>(link_.ts_pipe.max_bytes_per_interval),
+        link_.stream_urb_size);
+    OutputDebugStringA(buf);
 }
 
 bool DyudDevice::SendCommand(const uint8_t* cmd, size_t cmd_len, std::vector<uint8_t>& res_out, size_t res_len, std::string* err) {
@@ -244,7 +297,7 @@ bool DyudDevice::StopTS() {
 }
 
 bool DyudDevice::StartStream(WinUsbDevice::ChunkCallback cb) {
-    return usb_.StartAsyncStream(kEpTsIn, kStreamUrbCount, kStreamUrbSize, std::move(cb));
+    return usb_.StartAsyncStream(kEpTsIn, kStreamUrbCount, link_.stream_urb_size, std::move(cb));
 }
 
 void DyudDevice::StopStream() {

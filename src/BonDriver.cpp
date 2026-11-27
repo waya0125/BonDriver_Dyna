@@ -57,7 +57,10 @@ void BonDriverDyna::LoadIni(HMODULE module) {
         ini_path += L".ini";
     }
 
-    cfg_.device_index = GetPrivateProfileIntW(L"DYUD200", L"DeviceIndex", 0, ini_path.c_str());
+    // GetPrivateProfileIntW は負の値の扱いが明記されていないため文字列で読んで解釈する
+    wchar_t idx_buf[32]{};
+    GetPrivateProfileStringW(L"DYUD200", L"DeviceIndex", L"0", idx_buf, 32, ini_path.c_str());
+    cfg_.device_index = ParseDeviceIndex(idx_buf, 0);
     cfg_.enable_b25 = GetPrivateProfileIntW(L"DYUD200", L"EnableB25", 1, ini_path.c_str()) != 0;
     cfg_.no_xor = GetPrivateProfileIntW(L"DYUD200", L"NoXor", 0, ini_path.c_str()) != 0;
     cfg_.no_settle = GetPrivateProfileIntW(L"DYUD200", L"NoSettle", 0, ini_path.c_str()) != 0;

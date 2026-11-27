@@ -141,6 +141,33 @@ void TestFirmwareVersion() {
     assert(fw1053.NeedsNewInit() && fw1053.IsXorBypassed());
 }
 
+void TestParseDeviceIndex() {
+    assert(dyna::ParseDeviceIndex(L"0", 0) == 0);
+    assert(dyna::ParseDeviceIndex(L"2", 0) == 2);
+    assert(dyna::ParseDeviceIndex(L" 1", 0) == 1);
+    assert(dyna::ParseDeviceIndex(L"-1", 0) == -1);
+    assert(dyna::ParseDeviceIndex(L"-5", 0) == -1);
+    assert(dyna::ParseDeviceIndex(L"", 0) == 0);
+    assert(dyna::ParseDeviceIndex(L"abc", 0) == 0);
+    assert(dyna::ParseDeviceIndex(nullptr, 3) == 3);
+    assert(dyna::ParseDeviceIndex(L"99999", 0) == 0);
+}
+
+void TestChooseStreamUrbSize() {
+    constexpr size_t kDef = 24064; // DyudDevice::kStreamUrbSize（Windows 専用ヘッダー部のため値で持つ）
+    // HighSpeed Bulk 512: 従来値 24064 (= 47 * 512 = 128 * 188) のまま
+    assert(dyna::ChooseStreamUrbSize(512, kDef) == 24064);
+    // FullSpeed Bulk 64: lcm(188,64)=3008 の倍数で 24064 以下 → 24064
+    assert(dyna::ChooseStreamUrbSize(64, kDef) == 24064);
+    // SuperSpeed Bulk 1024: lcm=48128 > target → lcm 1 個分
+    assert(dyna::ChooseStreamUrbSize(1024, kDef) == 48128);
+    // 取得失敗（0）は target のまま
+    assert(dyna::ChooseStreamUrbSize(0, kDef) == kDef);
+    // 半端な値でも 188 と mps の倍数になる
+    const size_t v = dyna::ChooseStreamUrbSize(500, kDef);
+    assert(v % 188 == 0 && v % 500 == 0 && v <= kDef);
+}
+
 } // namespace
 
 int main() {
@@ -151,6 +178,8 @@ int main() {
     TestFrequency();
     TestMulti2RoundTrip();
     TestFirmwareVersion();
+    TestParseDeviceIndex();
+    TestChooseStreamUrbSize();
     std::cout << "ALL CORE TESTS PASSED\n";
     return 0;
 }
