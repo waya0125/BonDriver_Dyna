@@ -46,7 +46,11 @@ Linux の録画コマンド [recdyna](https://github.com/waya0125/recdyna) の�
 
 ```ini
 [DYUD200]
-; 使用する DY-UD200 のインデックス（0 始まり。複数台接続時に指定）
+; 使用する DY-UD200 の選び方（複数台接続時）
+;   0 以上 : 列挙順のインデックス（0 始まり）で固定。そのデバイスが使用中なら開けません
+;   -1     : 空きデバイス自動選択。列挙順に開いてみて、他のアプリ・他の BonDriver が
+;            使っていない最初のデバイスを使います（TVTest/EDCB で複数台をまとめて使う場合向け）
+; 列挙順は Windows のデバイスパスの並び順で、USB ポートを差し替えると変わることがあります
 DeviceIndex=0
 
 ; 本体内蔵 B-CAS スロットで ARIB STD-B25 復号を行う（1=有効 / 0=無効、既定 1）
@@ -65,6 +69,8 @@ OneSeg=0
 ; 選局後のロック待機タイムアウト（ミリ秒）
 LockTimeoutMs=3000
 ```
+
+チューナーを開いたとき、USB の接続速度（`DEVICE_SPEED`）と TS 用エンドポイントのパイプ情報（`WinUsb_QueryPipeEx`、Windows 8.1 より前は `WinUsb_QueryPipe`）をデバッグ出力に書きます。[DebugView](https://learn.microsoft.com/sysinternals/downloads/debugview) などで `[BonDriver_Dyna]` の行を見ると、開いたデバイス番号・速度・MaximumPacketSize・実際に使う Bulk 転送サイズを確認できます。Bulk 転送サイズは 188 バイトと MaximumPacketSize の両方の倍数になるよう自動で決めます（HighSpeed の 512 バイトなら従来どおり 24064 バイト）。
 
 ## ビルド
 

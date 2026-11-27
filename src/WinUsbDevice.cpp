@@ -27,6 +27,26 @@ std::wstring FormatVidPid(uint16_t vid, uint16_t pid) {
     return std::wstring(buf);
 }
 
+// WINUSB_PIPE_INFORMATION_EX と同じレイアウト。
+// SDK のヘッダーでは NTDDI_VERSION によって定義されないことがあるため自前で持つ。
+struct PipeInformationEx {
+    int PipeType; // USBD_PIPE_TYPE
+    UCHAR PipeId;
+    USHORT MaximumPacketSize;
+    UCHAR Interval;
+    ULONG MaximumBytesPerInterval;
+};
+
+using QueryPipeExFn = BOOL(WINAPI*)(WINUSB_INTERFACE_HANDLE, UCHAR, UCHAR, PipeInformationEx*);
+
+// WinUsb_QueryPipeEx は Windows 8.1 以降にしか無いので、静的リンクすると
+// Windows 7 で DLL 自体が読み込めなくなる。GetProcAddress で解決する。
+QueryPipeExFn ResolveQueryPipeEx() {
+    HMODULE mod = GetModuleHandleW(L"winusb.dll");
+    if (!mod) return nullptr;
+    return reinterpret_cast<QueryPipeExFn>(reinterpret_cast<void*>(GetProcAddress(mod, "WinUsb_QueryPipeEx")));
+}
+
 } // namespace
 
 WinUsbDevice::~WinUsbDevice() {
@@ -106,6 +126,56 @@ void WinUsbDevice::Close() {
         CloseHandle(dev_handle_);
         dev_handle_ = INVALID_HANDLE_VALUE;
     }
+}
+
+bool WinUsbDevice::QueryDeviceSpeed(uint8_t& speed_out) const {
+    if (!winusb_) return false;
+    UCHAR speed = 0;
+    ULONG len = sizeof(speed);
+    if (!WinUsb_QueryDeviceInformation(winusb_, DEVICE_SPEED, &len, &speed) || len < 1) {
+        return false;
+    }
+    speed_out = speed;
+    return true;
+}
+
+bool WinUsbDevice::QueryPipeInfo(uint8_t ep, PipeInfo& out) const {
+    if (!winusb_) return false;
+
+    USB_INTERFACE_DESCRIPTOR if_desc{};
+    if (!WinUsb_QueryInterfaceSettings(winusb_, 0, &if_desc)) {
+        return false;
+    }
+
+    static const QueryPipeExFn query_ex = ResolveQueryPipeEx();
+
+    for (UCHAR i = 0; i < if_desc.bNumEndpoints; ++i) {
+        if (query_ex) {
+            PipeInformationEx pi{};
+            if (query_ex(winusb_, 0, i, &pi)) {
+                if (pi.PipeId != ep) continue;
+                out.pipe_id = pi.PipeId;
+                out.pipe_type = pi.PipeType;
+                out.max_packet_size = pi.MaximumPacketSize;
+                out.interval = pi.Interval;
+                out.max_bytes_per_interval = pi.MaximumBytesPerInterval;
+                out.from_ex = true;
+                return true;
+            }
+            // QueryPipeEx 自体が失敗した場合は、同じインデックスを WinUsb_QueryPipe で取り直す
+        }
+        WINUSB_PIPE_INFORMATION pi{};
+        if (WinUsb_QueryPipe(winusb_, 0, i, &pi) && pi.PipeId == ep) {
+            out.pipe_id = pi.PipeId;
+            out.pipe_type = static_cast<int>(pi.PipeType);
+            out.max_packet_size = pi.MaximumPacketSize;
+            out.interval = pi.Interval;
+            out.max_bytes_per_interval = 0;
+            out.from_ex = false;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool WinUsbDevice::BulkWrite(uint8_t ep, const uint8_t* data, size_t len, uint32_t timeout_ms, size_t* written) {

@@ -35,6 +35,22 @@ public:
     void Close();
     bool IsOpen() const { return winusb_ != nullptr; }
 
+    // DEVICE_SPEED（WinUsb_QueryDeviceInformation）。LowSpeed=1, FullSpeed=2, HighSpeed=3。
+    // WinUSB は Full/Low を区別せず LowSpeed を返すことがあり、SuperSpeed 接続も HighSpeed として返る。
+    bool QueryDeviceSpeed(uint8_t& speed_out) const;
+
+    struct PipeInfo {
+        uint8_t pipe_id = 0;
+        int pipe_type = 0;                  // USBD_PIPE_TYPE（0=Control, 1=Isochronous, 2=Bulk, 3=Interrupt）
+        uint16_t max_packet_size = 0;
+        uint8_t interval = 0;
+        uint32_t max_bytes_per_interval = 0; // WinUsb_QueryPipeEx が使えたときのみ有効
+        bool from_ex = false;                // WinUsb_QueryPipeEx で取得したか
+    };
+    // 代替設定 0 のエンドポイント ep の情報を取得する。
+    // WinUsb_QueryPipeEx（Windows 8.1 以降）は動的に解決し、無い環境では WinUsb_QueryPipe を使う。
+    bool QueryPipeInfo(uint8_t ep, PipeInfo& out) const;
+
     bool BulkWrite(uint8_t ep, const uint8_t* data, size_t len, uint32_t timeout_ms, size_t* written = nullptr);
     bool BulkRead(uint8_t ep, uint8_t* data, size_t len, uint32_t timeout_ms, size_t* read_len = nullptr);
 
