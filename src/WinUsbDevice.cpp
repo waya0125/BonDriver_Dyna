@@ -152,7 +152,8 @@ bool WinUsbDevice::QueryPipeInfo(uint8_t ep, PipeInfo& out) const {
     for (UCHAR i = 0; i < if_desc.bNumEndpoints; ++i) {
         if (query_ex) {
             PipeInformationEx pi{};
-            if (query_ex(winusb_, 0, i, &pi) && pi.PipeId == ep) {
+            if (query_ex(winusb_, 0, i, &pi)) {
+                if (pi.PipeId != ep) continue;
                 out.pipe_id = pi.PipeId;
                 out.pipe_type = pi.PipeType;
                 out.max_packet_size = pi.MaximumPacketSize;
@@ -161,7 +162,7 @@ bool WinUsbDevice::QueryPipeInfo(uint8_t ep, PipeInfo& out) const {
                 out.from_ex = true;
                 return true;
             }
-            continue;
+            // QueryPipeEx 自体が失敗した場合は、同じインデックスを WinUsb_QueryPipe で取り直す
         }
         WINUSB_PIPE_INFORMATION pi{};
         if (WinUsb_QueryPipe(winusb_, 0, i, &pi) && pi.PipeId == ep) {
